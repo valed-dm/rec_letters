@@ -20,11 +20,12 @@ jobs:
       - name: Convert Markdown to outputs
         run: |
           mkdir -p outputs/
+          sudo apt-get update
+          sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended texlive-xcolor
           for file in letters/*.md; do
             base=$(basename "$file" .md)
             pandoc "$file" -o "outputs/${base}.pdf" --pdf-engine=pdflatex
             pandoc "$file" -o "outputs/${base}.docx"
-            pandoc "$file" -o "outputs/${base}.html"
           done
 
       # Optional: Embed digital signature (if field exists)
