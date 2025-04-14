@@ -8,17 +8,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install complete LaTeX system
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          sudo apt-get install -y \
             pandoc \
             texlive-xetex \
+            texlive-fonts-recommended \
             texlive-latex-recommended \
             texlive-latex-extra \
+            texlive-fonts-extra \
             lmodern \
             fonts-liberation \
-            fonts-noto
+            fonts-noto \
+            fonts-roboto \
+            fonts-dejavu
 
       - name: Convert documents
         run: |
@@ -26,12 +30,14 @@ jobs:
           for file in letters/*.md; do
             [ -f "$file" ] || continue
             base=$(basename "$file" .md)
-          
-            # PDF with proper Russian language support
+            
+            # PDF with XeLaTeX and proper font setup
             pandoc "$file" \
               -o "outputs/${base}.pdf" \
               --pdf-engine=xelatex \
-              -V mainfont="Noto Serif" \
+              -V mainfont="DejaVu Serif" \
+              -V sansfont="DejaVu Sans" \
+              -V monofont="DejaVu Sans Mono" \
               -V lang="ru-RU" \
               -V geometry:margin=2cm
             
