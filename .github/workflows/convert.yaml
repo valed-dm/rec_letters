@@ -8,12 +8,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up LaTeX and Pandoc
+      - name: Setup LaTeX Environment
         run: |
-          # Add deadsnakes PPA for reliable packages
+          # Add reliable LaTeX repository
           sudo apt-get update
           sudo apt-get install -y software-properties-common
-          sudo add-apt-repository -y ppa:jonathonf/texlive
+          sudo add-apt-repository -y ppa:jonathonf/texlive-2023
           sudo apt-get update
 
           # Install minimal required packages
@@ -22,28 +22,34 @@ jobs:
             texlive-xetex \
             texlive-fonts-recommended \
             lmodern \
-            fonts-liberation
+            fonts-liberation \
+            fonts-noto-cjk
 
-      - name: Convert documents
+      - name: Convert Documents
         run: |
           mkdir -p outputs
           for file in letters/*.md; do
             [ -f "$file" ] || continue
             base=$(basename "$file" .md)
             
-            # PDF with XeLaTeX for Unicode support
+            # PDF with XeLaTeX
             pandoc "$file" \
               -o "outputs/${base}.pdf" \
               --pdf-engine=xelatex \
-              -V mainfont="Liberation Serif" \
-              -V lang=russian
+              -V mainfont="Noto Serif" \
+              -V lang=russian \
+              --fail-if-warnings
             
             # DOCX conversion
-            pandoc "$file" -o "outputs/${base}.docx"
+            pandoc "$file" \
+              -o "outputs/${base}.docx" \
+              --reference-doc=template.docx  # Optional template
           done
 
-      - name: Upload outputs
-        uses: actions/upload-artifact@v3
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
         with:
           name: converted-documents
           path: outputs/
+          if-no-files-found: error
+          retention-days: 5
