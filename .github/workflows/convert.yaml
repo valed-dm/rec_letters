@@ -8,21 +8,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install complete LaTeX system
+      - name: Install toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             pandoc \
             texlive-xetex \
-            texlive-fonts-recommended \
-            texlive-latex-recommended \
-            texlive-latex-extra \
             texlive-fonts-extra \
-            lmodern \
-            fonts-liberation \
-            fonts-noto \
-            fonts-roboto \
-            fonts-dejavu
+            wkhtmltopdf \
+            libreoffice \
+            unoconv \
+            fonts-dejavu \
+            fonts-noto
 
       - name: Convert documents
         run: |
@@ -30,23 +27,42 @@ jobs:
           for file in letters/*.md; do
             [ -f "$file" ] || continue
             base=$(basename "$file" .md)
-            
-            # PDF with XeLaTeX and proper font setup
+          
+            # 1. PDF (Professional Print)
             pandoc "$file" \
               -o "outputs/${base}.pdf" \
               --pdf-engine=xelatex \
-              -V mainfont="DejaVu Serif" \
-              -V sansfont="DejaVu Sans" \
-              -V monofont="DejaVu Sans Mono" \
+              -V mainfont="Noto Serif" \
               -V lang="ru-RU" \
-              -V geometry:margin=2cm
-            
-            # DOCX conversion
+              --template=eisvogel
+          
+            # 2. DOCX (Editable Word)
             pandoc "$file" -o "outputs/${base}.docx"
+          
+            # 3. ODT (OpenOffice/LibreOffice)
+            pandoc "$file" -o "outputs/${base}.odt"
+          
+            # 4. HTML (Web Version)
+            pandoc "$file" \
+              -o "outputs/${base}.html" \
+              --self-contained \
+              --css=github-pandoc.css
+          
+            # 5. Plain Text (Fallback)
+            pandoc "$file" -o "outputs/${base}.txt" -t plain
           done
 
-      - name: Upload results
+      - name: Package EPUB (optional)
+        if: ${{ always() }}
+        run: |
+          for file in letters/*.md; do
+            base=$(basename "$file" .md)
+            pandoc "$file" -o "outputs/${base}.epub" --toc
+          done
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: converted-documents
           path: outputs/
+          retention-days: 7
