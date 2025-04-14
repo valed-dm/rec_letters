@@ -3,14 +3,18 @@ on: push
 
 jobs:
   convert:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
       # Install Pandoc + tools
       - name: Setup environment
         run: |
-          sudo apt-get install pandoc texlive-latex-base wkhtmltopdf
+          for i in {1..3}; do
+            sudo apt-get update -y && \
+            sudo apt-get install -y pandoc texlive-latex-base wkhtmltopdf && \
+            break || sleep 15
+          done
 
       # Convert all .md files to PDF/DOCX
       - name: Convert Markdown to outputs
