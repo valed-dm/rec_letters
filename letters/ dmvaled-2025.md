@@ -1,10 +1,9 @@
 ---
 mainfont: "Times New Roman"
 lang: ru-RU
-title: "DM_VALED recommendation letter"
+title: "РЕКОМЕНДАТЕЛЬНОЕ ПИСЬМО ВАЛЕДИНСКИЙ Д.В."
 ---
 
-# Рекомендательное письмо  
 **Валединскому Дмитрию**  
 **Дата:** 15 июля 2024  
 
