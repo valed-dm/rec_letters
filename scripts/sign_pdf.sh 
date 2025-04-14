@@ -1,0 +1,11 @@
+#!/bin/bash
+# Requires: pdftk (install via `sudo apt-get install pdftk`)
+INPUT_PDF=$1
+SIGNATURE_IMAGE=$2
+OUTPUT_PDF="${INPUT_PDF%.*}-signed.pdf"
+
+# Overlay signature on the PDF
+pdftk "$INPUT_PDF" stamp "$SIGNATURE_IMAGE" output "$OUTPUT_PDF"
+
+# Replace original with signed version
+mv "$OUTPUT_PDF" "$INPUT_PDF"
