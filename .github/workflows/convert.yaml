@@ -8,22 +8,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup LaTeX Environment
+      - name: Install LaTeX and Dependencies
         run: |
-          # Add reliable LaTeX repository
           sudo apt-get update
-          sudo apt-get install -y software-properties-common
-          sudo add-apt-repository -y ppa:jonathonf/texlive-2023
-          sudo apt-get update
-
-          # Install minimal required packages
           sudo apt-get install -y --no-install-recommends \
             pandoc \
             texlive-xetex \
             texlive-fonts-recommended \
+            texlive-latex-recommended \
+            texlive-latex-extra \
             lmodern \
             fonts-liberation \
-            fonts-noto-cjk
+            fonts-noto
 
       - name: Convert Documents
         run: |
@@ -36,14 +32,11 @@ jobs:
             pandoc "$file" \
               -o "outputs/${base}.pdf" \
               --pdf-engine=xelatex \
-              -V mainfont="Noto Serif" \
-              -V lang=russian \
-              --fail-if-warnings
+              -V mainfont="Liberation Serif" \
+              -V lang=russian
             
             # DOCX conversion
-            pandoc "$file" \
-              -o "outputs/${base}.docx" \
-              --reference-doc=template.docx  # Optional template
+            pandoc "$file" -o "outputs/${base}.docx"
           done
 
       - name: Upload Results
@@ -51,5 +44,3 @@ jobs:
         with:
           name: converted-documents
           path: outputs/
-          if-no-files-found: error
-          retention-days: 5
