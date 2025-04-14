@@ -8,38 +8,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install LaTeX and Dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             pandoc \
             texlive-xetex \
-            texlive-fonts-recommended \
             texlive-latex-recommended \
             texlive-latex-extra \
             lmodern \
             fonts-liberation \
             fonts-noto
 
-      - name: Convert Documents
+      - name: Convert documents
         run: |
           mkdir -p outputs
           for file in letters/*.md; do
             [ -f "$file" ] || continue
             base=$(basename "$file" .md)
-            
-            # PDF with XeLaTeX
+          
+            # PDF with proper Russian language support
             pandoc "$file" \
               -o "outputs/${base}.pdf" \
               --pdf-engine=xelatex \
-              -V mainfont="Liberation Serif" \
-              -V lang=russian
+              -V mainfont="Noto Serif" \
+              -V lang="ru-RU" \
+              -V geometry:margin=2cm
             
             # DOCX conversion
             pandoc "$file" -o "outputs/${base}.docx"
           done
 
-      - name: Upload Results
+      - name: Upload results
         uses: actions/upload-artifact@v4
         with:
           name: converted-documents
