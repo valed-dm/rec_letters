@@ -19,13 +19,20 @@ jobs:
       # Convert all .md files to PDF/DOCX
       - name: Convert Markdown to outputs
         run: |
-          mkdir -p outputs/
-          sudo apt-get update
-          sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended texlive-xcolor
+          # Create outputs dir (no error if exists)
+          mkdir -p outputs/ || true
+          
+          # Install dependencies only if missing
+          command -v pandoc >/dev/null || sudo apt-get install -y pandoc
+          dpkg -l | grep texlive-xcolor >/dev/null || sudo apt-get install -y texlive-xcolor
+          
+          # Convert files
           for file in letters/*.md; do
+            [ -f "$file" ] || continue  # Skip if no files
             base=$(basename "$file" .md)
-            pandoc "$file" -o "outputs/${base}.pdf" --pdf-engine=pdflatex
+            pandoc "$file" -o "outputs/${base}.pdf" --pdf-engine=pdflatex --fail-if-warnings
             pandoc "$file" -o "outputs/${base}.docx"
+            pandoc "$file" -o "outputs/${base}.html"
           done
 
       # Optional: Embed digital signature (if field exists)
