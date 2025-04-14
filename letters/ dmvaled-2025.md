@@ -1,6 +1,7 @@
 ---
 mainfont: "Times New Roman"
 lang: ru-RU
+title: "DM_VALED recommendation letter"
 ---
 
 # Рекомендательное письмо  
