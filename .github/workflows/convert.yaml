@@ -8,7 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install full font stack
+      - name: Install complete font system
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -16,12 +16,11 @@ jobs:
             texlive-xetex \
             texlive-fonts-extra \
             fonts-noto \
-            fonts-noto-cjk \
-            fonts-noto-core \
+            fonts-noto-mono \
             fonts-noto-extra \
-            fonts-noto-ui-core \
-            fonts-dejavu \
-            fonts-liberation
+            fonts-symbola \  # Special symbols coverage
+            fonts-liberation \
+            fonts-dejavu
 
       - name: Convert documents
         run: |
@@ -30,35 +29,27 @@ jobs:
             [ -f "$file" ] || continue
             base=$(basename "$file" .md)
             
-            # Extract title from YAML or use filename
-            TITLE=$(grep -m 1 '^title:' "$file" | cut -d'"' -f2 || echo "${base} Recommendation Letter")
-            
-            # 1. PDF with full Unicode support
+            # 1. PDF with full symbol support
             pandoc "$file" \
               -o "outputs/${base}.pdf" \
               --pdf-engine=xelatex \
-              -V mainfont="Noto Serif" \
-              -V sansfont="Noto Sans" \
+              -V mainfont="Noto Serif, Symbola" \  # Fallback to Symbola
+              -V sansfont="Noto Sans, Symbola" \
               -V monofont="Noto Sans Mono" \
+              -V mathfont="Noto Sans Math" \
               -V lang="ru-RU" \
-              --metadata title="$TITLE" \
+              --metadata title="$(grep -m 1 '^title:' "$file" | cut -d'"' -f2 || echo "${base}")" \
               -V geometry:margin=2cm
             
-            # 2. DOCX with proper metadata
-            pandoc "$file" \
-              -o "outputs/${base}.docx" \
-              --metadata title="$TITLE"
+            # 2. DOCX (fallback to ASCII minus if needed)
+            sed 's/−/-/g' "$file" | pandoc -o "outputs/${base}.docx"
             
-            # 3. HTML with Russian lang attribute
+            # 3. HTML with symbol fallbacks
             pandoc "$file" \
               -o "outputs/${base}.html" \
               --self-contained \
-              --metadata title="$TITLE" \
-              --metadata lang="ru" \
+              --metadata title="$(grep -m 1 '^title:' "$file" | cut -d'"' -f2 || echo "${base}")" \
               --css=https://cdn.jsdelivr.net/npm/water.css@2/out/water.css
-            
-            # 4. Plain text fallback
-            pandoc "$file" -o "outputs/${base}.txt" -t plain
           done
 
       - name: Upload artifacts
