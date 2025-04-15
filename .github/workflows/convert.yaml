@@ -15,7 +15,7 @@ jobs:
           sudo apt-get install -y \
             pandoc \
             texlive-xetex \
-            texlive-latex-base \ 
+            texlive-latex-base \
             texlive-fonts-extra \
             pdftk \
             fonts-noto \
