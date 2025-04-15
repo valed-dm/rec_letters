@@ -5,16 +5,19 @@ on: push
 jobs:
   convert:
     runs-on: ubuntu-22.04
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install full font stack
+      - name: Install tools & font stack
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             pandoc \
             texlive-xetex \
+            texlive-latex-base \ 
             texlive-fonts-extra \
+            pdftk \
             fonts-noto \
             fonts-noto-cjk \
             fonts-noto-core \
@@ -23,17 +26,20 @@ jobs:
             fonts-dejavu \
             fonts-liberation
 
-      - name: Convert documents
+      - name: Convert documents and sign PDFs
         run: |
-          mkdir -p outputs
+          mkdir -p outputs signed
+
+          # 1. Generate signature overlay PDF
+          pdflatex -output-directory=outputs assets/signature_overlay.tex
+
           for file in letters/*.md; do
             [ -f "$file" ] || continue
             base=$(basename "$file" .md)
-            
-            # Extract title from YAML or use filename
+
             TITLE=$(grep -m 1 '^title:' "$file" | cut -d'"' -f2 || echo "${base} Recommendation Letter")
-            
-            # 1. PDF with full Unicode support
+
+            # PDF
             pandoc "$file" \
               -o "outputs/${base}.pdf" \
               --pdf-engine=xelatex \
@@ -43,26 +49,35 @@ jobs:
               -V lang="ru-RU" \
               --metadata title="$TITLE" \
               -V geometry:margin=2cm
-            
-            # 2. DOCX with proper metadata
+
+            # Apply signature overlay
+            pdftk "outputs/${base}.pdf" stamp "outputs/signature_overlay.pdf" output "signed/${base}-signed.pdf"
+
+            # DOCX
             pandoc "$file" \
               -o "outputs/${base}.docx" \
               --metadata title="$TITLE"
-            
-            # 3. HTML with Russian lang attribute
+
+            # HTML
             pandoc "$file" \
               -o "outputs/${base}.html" \
               --self-contained \
               --metadata title="$TITLE" \
               --metadata lang="ru" \
               --css=https://cdn.jsdelivr.net/npm/water.css@2/out/water.css
-            
-            # 4. Plain text fallback
+
+            # Plain text
             pandoc "$file" -o "outputs/${base}.txt" -t plain
           done
 
-      - name: Upload artifacts
+      - name: Upload converted documents
         uses: actions/upload-artifact@v4
         with:
           name: converted-documents
           path: outputs/
+
+      - name: Upload signed PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-documents
+          path: signed/
