@@ -1,45 +1,80 @@
 name: Document Conversion
 
-on: push
+on:
+  push:
+    branches: [ main ] # Trigger only on pushes to the main branch (or specify others)
+    paths:
+      - 'letters/**.md' # Trigger only if Markdown files in letters/ change
+      - 'assets/signature_overlay.tex' # Trigger if the signature changes
+      - '.github/workflows/conversion.yml' # Trigger if the workflow itself changes
 
 jobs:
   convert:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository code
+        uses: actions/checkout@v4
 
-      - name: Install tools & font stack
+      - name: Install required tools and fonts
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             pandoc \
             texlive-xetex \
             texlive-latex-base \
-            texlive-fonts-extra \
+            texlive-fonts-recommended \
+            texlive-extra-utils \
+            texlive-lang-cyrillic \
             pdftk \
-            fonts-noto \
-            fonts-noto-cjk \
-            fonts-noto-core \
-            fonts-noto-extra \
-            fonts-noto-ui-core \
-            fonts-dejavu \
-            fonts-liberation
+            fonts-noto # Meta-package for Noto fonts, generally sufficient for wide Unicode coverage
 
-      - name: Convert documents and sign PDFs
+          # Optional: If Noto Serif/Sans/Mono aren't fully covered or specific variants are needed:
+          # sudo apt-get install -y fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-mono
+
+          # Refresh font cache after installation
+          sudo fc-cache -fv
+
+      - name: Convert Markdown documents and apply signatures
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status
+
+          # Create output directories
           mkdir -p outputs signed
 
-          # 1. Generate signature overlay PDF
-          pdflatex -output-directory=outputs assets/signature_overlay.tex
+          # --- Signature Overlay Generation ---
+          # Generate the PDF that will be used as a stamp/overlay
+          # Ensure assets/signature_overlay.tex exists and is correctly formatted.
+          # Using xelatex here for consistency, though pdflatex might work if the overlay is simple.
+          echo "Generating signature overlay PDF..."
+          xelatex -output-directory=outputs -interaction=batchmode assets/signature_overlay.tex
+          # Check if the PDF was created
+          if [ ! -f "outputs/signature_overlay.pdf" ]; then
+            echo "Error: Failed to generate signature_overlay.pdf. Check assets/signature_overlay.tex and LaTeX logs."
+            # Attempt to show log content if available (might be named signature_overlay.log)
+            cat outputs/signature_overlay.log || echo "Log file not found."
+            exit 1
+          fi
+          echo "Signature overlay generated."
 
+          # --- Document Conversion Loop ---
+          echo "Starting document conversion..."
           for file in letters/*.md; do
+            # Check if it's a file and not a directory/symlink etc.
             [ -f "$file" ] || continue
+
+            # Extract base filename without extension
             base=$(basename "$file" .md)
+            echo "Processing: ${base}.md"
 
-            TITLE=$(grep -m 1 '^title:' "$file" | cut -d'"' -f2 || echo "${base} Recommendation Letter")
+            # Extract title from Markdown YAML front matter (simple grep/cut approach)
+            # Note: Assumes title format 'title: "Actual Title"' or 'title: Actual Title'
+            # More robust parsing might need tools like yq, but this is simpler.
+            TITLE=$(grep -m 1 -E '^[[:space:]]*title:[[:space:]]*"?([^"]*)"?' "$file" | sed -E 's/^[[:space:]]*title:[[:space:]]*"?//;s/"?$//' || echo "${base} Recommendation Letter")
+            echo "  Using Title: $TITLE"
 
-            # PDF
+            # --- PDF Conversion ---
+            echo "  Converting to PDF..."
             pandoc "$file" \
               -o "outputs/${base}.pdf" \
               --pdf-engine=xelatex \
@@ -49,35 +84,46 @@ jobs:
               -V lang="ru-RU" \
               --metadata title="$TITLE" \
               -V geometry:margin=2cm
+              # To add colored titles via LaTeX template: --template=path/to/custom.tex
+              # Ensure custom.tex defines the 'accent' color and modifies heading commands.
 
-            # Apply signature overlay
+            # --- Apply Signature Overlay to PDF ---
+            echo "  Applying signature..."
             pdftk "outputs/${base}.pdf" stamp "outputs/signature_overlay.pdf" output "signed/${base}-signed.pdf"
 
-            # DOCX
+            # --- DOCX Conversion ---
+            echo "  Converting to DOCX..."
             pandoc "$file" \
               -o "outputs/${base}.docx" \
               --metadata title="$TITLE"
+              # To add colored titles via reference doc: --reference-doc=path/to/template.docx
 
-            # HTML
+            # --- HTML Conversion ---
+            echo "  Converting to HTML..."
             pandoc "$file" \
               -o "outputs/${base}.html" \
               --self-contained \
               --metadata title="$TITLE" \
               --metadata lang="ru" \
-              --css=https://cdn.jsdelivr.net/npm/water.css@2/out/water.css
+              --css=https://cdn.jsdelivr.net/npm/water.css@2/out/water.css # Simple default styling
+              # To add colored titles via CSS: --css=path/to/custom.css (where custom.css styles headings)
 
-            # Plain text
+            # --- Plain Text Conversion ---
+            echo "  Converting to TXT..."
             pandoc "$file" -o "outputs/${base}.txt" -t plain
-          done
 
-      - name: Upload converted documents
+            echo "  Finished processing ${base}.md"
+          done
+          echo "All documents processed."
+
+      - name: Upload converted documents (excluding signed PDFs)
         uses: actions/upload-artifact@v4
         with:
           name: converted-documents
-          path: outputs/
+          path: outputs/ # Uploads PDF, DOCX, HTML, TXT, and the signature_overlay.pdf/log
 
-      - name: Upload signed PDFs
+      - name: Upload signed PDF documents
         uses: actions/upload-artifact@v4
         with:
           name: signed-documents
-          path: signed/
+          path: signed/ # Uploads only the PDFs with the signature applied
