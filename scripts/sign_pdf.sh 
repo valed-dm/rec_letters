@@ -1,11 +1,25 @@
 #!/bin/bash
-# Requires: pdftk (install via `sudo apt-get install pdftk`)
-INPUT_PDF=$1
-SIGNATURE_IMAGE=$2
-OUTPUT_PDF="${INPUT_PDF%.*}-signed.pdf"
 
-# Overlay signature on the PDF
-pdftk "$INPUT_PDF" stamp "$SIGNATURE_IMAGE" output "$OUTPUT_PDF"
+# Sign a PDF with a signature PDF overlay
+# Usage: ./sign_pdf.sh input.pdf signature.pdf
 
-# Replace original with signed version
-mv "$OUTPUT_PDF" "$INPUT_PDF"
+set -e
+
+INPUT_PDF="$1"
+SIGNATURE_PDF="$2"
+
+if [[ -z "$INPUT_PDF" || -z "$SIGNATURE_PDF" ]]; then
+  echo "Usage: $0 <input.pdf> <signature.pdf>"
+  exit 1
+fi
+
+BASENAME="${INPUT_PDF%.*}"
+OUTPUT_PDF="${BASENAME}-signed.pdf"
+
+echo "Stamping signature onto $INPUT_PDF..."
+pdftk "$INPUT_PDF" stamp "$SIGNATURE_PDF" output "$OUTPUT_PDF"
+
+echo "Signature added: $OUTPUT_PDF"
+
+# Uncomment to replace original
+# mv "$OUTPUT_PDF" "$INPUT_PDF"
